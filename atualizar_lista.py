@@ -11,28 +11,25 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# 2. Baixar IPs oficiais atualizados do Azure (URL Corrigida)
-print("Buscando IPs atualizados do Azure...")
-azure_url = "https://githubusercontent.com"
+# 2. Buscar IPs do Azure Brazil South de uma CDN alternativa super rápida (jsDelivr)
+print("Buscando IPs atualizados do Azure (Brazil South)...")
+azure_url = "https://jsdelivr.net"
 
 try:
     response = requests.get(azure_url)
     response.raise_for_status()
-    azure_data = response.json()
+    ips_lista = response.json()  # Este arquivo já traz direto uma lista de strings ["IP1", "IP2"...]
 except Exception as e:
     print(f"Erro ao baixar os IPs do Azure: {e}")
     exit(1)
 
-ips_brazil_south = []
-for value in azure_data.get("values", []):
-    if value.get("name") == "AzureCloud.brazilsouth":
-        for ip in value["properties"]["addressPrefixes"]:
-            ips_brazil_south.append({"ip": ip})
+# Formatando os IPs para o padrão aceito pela API do Cloudflare
+ips_brazil_south = [{"ip": ip} for ip in ips_lista]
 
 print(f"Encontrados {len(ips_brazil_south)} IPs para Brazil South.")
 
 if not ips_brazil_south:
-    print("Nenhum IP encontrado para a região especificada. Encerrando.")
+    print("Nenhum IP encontrado. Encerrando.")
     exit(1)
 
 # 3. Enviar em massa para a lista do Cloudflare
