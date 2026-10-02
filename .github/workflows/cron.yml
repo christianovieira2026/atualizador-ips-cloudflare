@@ -23,7 +23,7 @@ jobs:
 
     - name: Executar script de atualização
       env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets::CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets::CLOUDFLARE_ACCOUNT_ID }}
-        CLOUDFLARE_LIST_ID: ${{ secrets::CLOUDFLARE_LIST_ID }}
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        CLOUDFLARE_LIST_ID: ${{ secrets.CLOUDFLARE_LIST_ID }}
       run: python atualizar_lista.py
