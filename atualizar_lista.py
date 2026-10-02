@@ -14,27 +14,33 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# 1. Buscar os IPs usando um servidor de API DNS completamente diferente e ultra estável
-print("Buscando IPs atualizados do Azure (Brazil South)...")
-azure_url = "https://amazonaws.com" # Usado apenas como teste de conectividade se falhar, mas vamos focar no blob do azure abaixo:
+# 1. Buscar os IPs diretamente do espelho oficial do Azure (evitando falhas de JSON)
+print("Buscando IPs atualizados do Azure...")
+azure_url = "https://microsoft.com"
 
-# Para garantir independência total do githubusercontent, usamos a API do IP-API/Mirror estável do Azure
-azure_url = "https://azureedge.net" 
-
-# Se o link acima falhar ou estiver indisponível, usamos um espelho alternativo em outra infraestrutura (Cloudflare Pages)
-azure_url = "https://pages.dev"
+# Como o link da Microsoft muda o número do final, usamos uma URL estável que sempre redireciona para o JSON oficial e completo
+azure_url = "https://githubusercontent.com"
 
 try:
     response = requests.get(azure_url, timeout=15)
     response.raise_for_status()
-    ips_lista = response.json() # Este endpoint já entrega os IPs do Brazil South limpos em uma lista
+    azure_data = response.json()
 except Exception as e:
     print(f"Erro ao baixar os IPs do Azure: {e}")
     exit(1)
 
-# Formatando no padrão de objeto do Cloudflare IP List
-ips_brazil_south = [{"ip": ip, "comment": "Azure Brazil South Auto-Update"} for ip in ips_lista]
+# Filtrando o JSON completo para pegar apenas o Brazil South
+ips_brazil_south = []
+for value in azure_data.get("values", []):
+    if value.get("name") == "AzureCloud.brazilsouth":
+        for ip in value["properties"]["addressPrefixes"]:
+            ips_brazil_south.append({"ip": ip, "comment": "Azure Brazil South Auto-Update"})
+
 print(f"Encontrados {len(ips_brazil_south)} IPs para Brazil South.")
+
+if not ips_brazil_south:
+    print("Nenhum IP encontrado. Encerrando.")
+    exit(1)
 
 # 2. Enviar em massa para a lista do Cloudflare
 cf_url = f"https://cloudflare.com{ACCOUNT_ID}/rules/lists/{LIST_ID}/items"
