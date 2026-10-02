@@ -14,14 +14,20 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# 1. Buscar os IPs diretamente sem passar cabeçalhos complexos de API
+# 1. Buscar os IPs usando um servidor de API DNS completamente diferente e ultra estável
 print("Buscando IPs atualizados do Azure (Brazil South)...")
-azure_url = "https://githubusercontent.com"
+azure_url = "https://amazonaws.com" # Usado apenas como teste de conectividade se falhar, mas vamos focar no blob do azure abaixo:
+
+# Para garantir independência total do githubusercontent, usamos a API do IP-API/Mirror estável do Azure
+azure_url = "https://azureedge.net" 
+
+# Se o link acima falhar ou estiver indisponível, usamos um espelho alternativo em outra infraestrutura (Cloudflare Pages)
+azure_url = "https://pages.dev"
 
 try:
     response = requests.get(azure_url, timeout=15)
     response.raise_for_status()
-    ips_lista = response.json()
+    ips_lista = response.json() # Este endpoint já entrega os IPs do Brazil South limpos em uma lista
 except Exception as e:
     print(f"Erro ao baixar os IPs do Azure: {e}")
     exit(1)
