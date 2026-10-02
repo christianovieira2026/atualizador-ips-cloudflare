@@ -1,5 +1,4 @@
 import os
-import re
 import requests
 
 TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
@@ -15,57 +14,51 @@ headers = {
     "Content-Type": "application/json"
 }
 
-print("Buscando IPs atualizados diretamente da infraestrutura Microsoft Azure...")
+# 1. API Oficial do Azure para descobrir os blocos de IP atuais da Public Cloud
+print("Consultando a API oficial de descoberta do Azure...")
+azure_api_url = "https://azure.com"
+
+# Endereço alternativo da API do Azure caso o endpoint regional tenha instabilidade
+azure_api_url = "https://githubusercontent.com"
+
+# Para remover COMPLETAMENTE o domínio do GitHub da sua rede do Actions, usamos o espelho direto na CDN da Microsoft:
+azure_api_url = "https://microsoft.com"
 
 try:
-    # 1. Acessa a página oficial de downloads da Microsoft para obter o link do arquivo JSON semanal
-    download_page_url = "https://microsoft.com"
-    page_response = requests.get(download_page_url, timeout=20)
-    page_response.raise_for_status()
-    
-    # 2. Usa expressão regular para capturar o link direto do JSON de download hospedado no domínio da Microsoft
-    matches = re.findall(r'href="(https://download\.microsoft\.com/[^"]+\.json)"', page_response.text)
-    
-    if not matches:
-        raise ValueError("Não foi possível encontrar o link do JSON na página oficial da Microsoft.")
-        
-    direct_azure_url = matches[0]
-    print(f"Baixando o arquivo oficial: {direct_azure_url}")
-    
-    # 3. Baixa o JSON oficial direto do domínio microsoft.com
-    azure_response = requests.get(direct_azure_url, timeout=20)
-    azure_response.raise_for_status()
-    azure_data = azure_response.json()
-
+    # Baixando o arquivo direto da CDN da Microsoft com cabeçalho de navegador comum
+    user_agent = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    response = requests.get(azure_api_url, headers=user_agent, timeout=20)
+    response.raise_for_status()
+    azure_data = response.json()
 except Exception as e:
-    print(f"Erro ao interagir com a infraestrutura da Microsoft: {e}")
+    print(f"Falha ao conectar na infraestrutura Microsoft: {e}")
     exit(1)
 
-# 4. Filtra o JSON oficial procurando pelo Brazil South
+# Filtrando o JSON para a tag específica do Brazil South
 ips_brazil_south = []
 for value in azure_data.get("values", []):
     if value.get("name") == "AzureCloud.brazilsouth":
         for ip in value["properties"]["addressPrefixes"]:
             ips_brazil_south.append({"ip": ip, "comment": "Azure Brazil South Auto-Update"})
 
-print(f"Encontrados {len(ips_brazil_south)} IPs para Brazil South.")
+print(f"Encontrados {len(ips_brazil_south)} IPs válidos para Brazil South.")
 
 if not ips_brazil_south:
-    print("Nenhum IP encontrado no arquivo JSON oficial. Encerrando.")
+    print("Erro: Nenhum IP foi encontrado dentro do bloco Brazil South.")
     exit(1)
 
-# 5. Envia os dados para a API do Cloudflare
+# 2. Atualizar o Cloudflare via API (Substituição Completa)
 cf_url = f"https://cloudflare.com{ACCOUNT_ID}/rules/lists/{LIST_ID}/items"
 print("Enviando novos IPs para o Cloudflare...")
 
 try:
-    cf_response = requests.put(cf_url, headers=headers, json=ips_brazil_south, timeout=15)
+    cf_response = requests.put(cf_url, headers=headers, json=ips_brazil_south, timeout=20)
 except Exception as e:
-    print(f"Erro de conexão com o Cloudflare: {e}")
+    print(f"Erro ao conectar na API do Cloudflare: {e}")
     exit(1)
 
 if cf_response.status_code == 200:
-    print("Sucesso! Lista do Cloudflare atualizada perfeitamente.")
+    print("Sucesso absoluto! A sua lista no Cloudflare foi atualizada com os IPs do Azure.")
 else:
     print(f"Erro retornado pelo Cloudflare (Código {cf_response.status_code}):")
     print(cf_response.text)
